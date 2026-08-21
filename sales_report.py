@@ -53,7 +53,7 @@ def main():
     total = sum(sales_by_shop.values())
 
     print("店舗別売上")
-    for shop, amount in sorted(sales_by_shop.items(), key=lambda x: x[1], reverse=True):
+    for shop, amount in sorted(sales_by_shop.items(), key=lambda item: item[1], reverse=True):
         share = amount / total * 100 if total else 0
         print(f"{shop}: {amount:,.0f}円 ({share:.1f}%)")
 
