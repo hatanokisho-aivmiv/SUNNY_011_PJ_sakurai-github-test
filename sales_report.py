@@ -1,47 +1,66 @@
+"""店舗別の売上を集計して出力する。
+
+使い方:
+    python3 sales_report.py sales.csv
+"""
+
 import sys
 import csv
 
+SHOP_COLUMN = 1
+AMOUNT_COLUMN = 3
 
-def load(path):
-    f = open(path)
-    r = csv.reader(f)
-    next(r)
-    d = []
-    for row in r:
+
+def load_rows(path):
+    """CSVを読み込み、ヘッダー行を除いた行のリストを返す。"""
+    with open(path, encoding="utf-8", newline="") as f:
+        reader = csv.reader(f)
+        next(reader, None)
+        return list(reader)
+
+
+def summarize(rows):
+    """店舗名をキー、売上合計を値とする辞書を返す。"""
+    sales_by_shop = {}
+    for line_no, row in enumerate(rows, start=2):
         try:
-            d.append(row)
-        except:
-            pass
-    return d
-
-
-def summarize(d):
-    tmp = {}
-    for row in d:
-        shop = row[1]
-        amount = float(row[3])
-        if shop in tmp:
-            tmp[shop] = tmp[shop] + amount
-        else:
-            tmp[shop] = amount
-    return tmp
+            shop = row[SHOP_COLUMN]
+            amount = float(row[AMOUNT_COLUMN].replace(",", ""))
+        except (IndexError, ValueError) as e:
+            print(f"{line_no}行目をスキップしました: {e}", file=sys.stderr)
+            continue
+        sales_by_shop[shop] = sales_by_shop.get(shop, 0) + amount
+    return sales_by_shop
 
 
 def main():
-    path = sys.argv[1]
-    d = load(path)
-    tmp = summarize(d)
+    if len(sys.argv) < 2:
+        print("使い方: python3 sales_report.py <CSVファイル>", file=sys.stderr)
+        return 1
 
-    total = 0
-    for k in tmp:
-        total = total + tmp[k]
+    path = sys.argv[1]
+    try:
+        rows = load_rows(path)
+    except OSError as e:
+        print(f"ファイルを読み込めませんでした: {e}", file=sys.stderr)
+        return 1
+
+    sales_by_shop = summarize(rows)
+    if not sales_by_shop:
+        print("集計できる行がありませんでした。", file=sys.stderr)
+        return 1
+
+    total = sum(sales_by_shop.values())
 
     print("店舗別売上")
-    for k in tmp:
-        print(k, tmp[k], tmp[k] / total * 100)
+    for shop, amount in sorted(sales_by_shop.items(), key=lambda x: x[1], reverse=True):
+        share = amount / total * 100 if total else 0
+        print(f"{shop}: {amount:,.0f}円 ({share:.1f}%)")
 
-    print("合計", total)
-    print("平均", total / len(tmp))
+    print(f"合計: {total:,.0f}円")
+    print(f"平均: {total / len(sales_by_shop):,.0f}円")
+    return 0
 
 
-main()
+if __name__ == "__main__":
+    sys.exit(main())
